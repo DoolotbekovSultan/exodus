@@ -216,7 +216,7 @@ class _RequestsPageState extends State<RequestsPage> {
     final text = 'Дата: $headerDate\n$body';
 
     // Копируем в буфер
-    await Clipboard.setData(ClipboardData(text: text));
+    Clipboard.setData(ClipboardData(text: text));
 
     ScaffoldMessenger.of(
       context,
@@ -294,7 +294,7 @@ class _RequestsPageState extends State<RequestsPage> {
                     onSelected: (value) async {
                       switch (value) {
                         case 'copy_formatted':
-                          await Clipboard.setData(
+                          Clipboard.setData(
                             ClipboardData(text: _formatLine(request)),
                           );
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -302,7 +302,7 @@ class _RequestsPageState extends State<RequestsPage> {
                           );
                           break;
                         case 'copy_status':
-                          await Clipboard.setData(
+                          Clipboard.setData(
                             ClipboardData(text: request.label()),
                           );
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -310,7 +310,7 @@ class _RequestsPageState extends State<RequestsPage> {
                           );
                           break;
                         case 'copy_time':
-                          await Clipboard.setData(
+                          Clipboard.setData(
                             ClipboardData(text: _formatTime(request.createdAt)),
                           );
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -318,9 +318,7 @@ class _RequestsPageState extends State<RequestsPage> {
                           );
                           break;
                         case 'copy_id':
-                          await Clipboard.setData(
-                            ClipboardData(text: request.id),
-                          );
+                          Clipboard.setData(ClipboardData(text: request.id));
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Скопировано')),
                           );
