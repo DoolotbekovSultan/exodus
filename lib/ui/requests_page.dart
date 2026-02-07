@@ -89,81 +89,87 @@ class _RequestsPageState extends State<RequestsPage> {
     final result = await showDialog<Request>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text(
-            existing == null ? 'Добавить заявку' : 'Редактировать заявку',
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: idController,
-                  decoration: const InputDecoration(labelText: 'ID'),
-                  keyboardType: TextInputType.number,
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(
+                existing == null ? 'Добавить заявку' : 'Редактировать заявку',
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: idController,
+                      decoration: const InputDecoration(labelText: 'ID'),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<RequestStatus>(
+                      initialValue: status,
+                      items: RequestStatus.values
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: e,
+                              child: Text(
+                                e == RequestStatus.secondLine
+                                    ? '2 лин'
+                                    : e.toString(),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          setStateDialog(() {
+                            status = v;
+                          });
+                        }
+                      },
+                      decoration: const InputDecoration(labelText: 'Статус'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: languageController,
+                      decoration: const InputDecoration(
+                        labelText: 'Язык (например, узбек, таджикский)',
+                      ),
+                      enabled: status == RequestStatus.languageNeeded,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: commentController,
+                      decoration: const InputDecoration(
+                        labelText: 'Комментарий',
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<RequestStatus>(
-                  initialValue: status,
-                  items: RequestStatus.values
-                      .map(
-                        (e) => DropdownMenuItem(
-                          value: e,
-                          child: Text(
-                            e == RequestStatus.secondLine
-                                ? '2 лин'
-                                : e.toString(),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) {
-                      setState(() {
-                        status = v;
-                      });
-                    }
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Отмена'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final req = Request(
+                      id: idController.text.trim(),
+                      status: status,
+                      language: languageController.text.trim().isEmpty
+                          ? null
+                          : languageController.text.trim(),
+                      comment: commentController.text.trim().isEmpty
+                          ? null
+                          : commentController.text.trim(),
+                    );
+                    Navigator.pop(context, req);
                   },
-                  decoration: const InputDecoration(labelText: 'Статус'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: languageController,
-                  decoration: const InputDecoration(
-                    labelText: 'Язык (например, узбек, таджикский)',
-                  ),
-                  enabled: status == RequestStatus.languageNeeded,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: commentController,
-                  decoration: const InputDecoration(labelText: 'Комментарий'),
+                  child: const Text('Сохранить'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final req = Request(
-                  id: idController.text.trim(),
-                  status: status,
-                  language: languageController.text.trim().isEmpty
-                      ? null
-                      : languageController.text.trim(),
-                  comment: commentController.text.trim().isEmpty
-                      ? null
-                      : commentController.text.trim(),
-                );
-                Navigator.pop(context, req);
-              },
-              child: const Text('Сохранить'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -185,24 +191,37 @@ class _RequestsPageState extends State<RequestsPage> {
 
   Future<void> exportText() async {
     final headerDate = _formatDay(filterDay ?? DateTime.now());
+
+    // Формируем строки
     final rows = requests.map((e) {
       final left = '${e.id} - ${e.label()}';
       final time = _formatTime(e.createdAt);
       final comment = (e.comment?.isNotEmpty ?? false) ? ' "${e.comment}"' : '';
       return {'left': left, 'time': time, 'comment': comment};
     }).toList();
-    final maxLeft = rows.fold<int>(
-      0,
-      (m, r) => r['left']!.length > m ? r['left']!.length : m,
-    );
+
+    final maxLeft = rows.fold<int>(0, (m, r) {
+      final width = r['left']!.runes.length; // учитываем кириллицу
+      return width > m ? width : m;
+    });
+
     final body = rows
-        .map(
-          (r) =>
-              '${r['left']!.padRight(maxLeft + 2)}${r['time']}${r['comment']}',
-        )
+        .map((r) {
+          final spacesCount = maxLeft - r['left']!.runes.length + 3;
+          final spaces = ' ' * spacesCount;
+          return '${r['left']}$spaces${r['time']}${r['comment']}';
+        })
         .join('\n');
+
     final text = 'Дата: $headerDate\n$body';
+
+    // Копируем в буфер
     await Clipboard.setData(ClipboardData(text: text));
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Текст скопирован')));
+
     if (!mounted) return;
     await showDialog<void>(
       context: context,
@@ -278,20 +297,32 @@ class _RequestsPageState extends State<RequestsPage> {
                           await Clipboard.setData(
                             ClipboardData(text: _formatLine(request)),
                           );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Скопировано')),
+                          );
                           break;
                         case 'copy_status':
                           await Clipboard.setData(
                             ClipboardData(text: request.label()),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Скопировано')),
                           );
                           break;
                         case 'copy_time':
                           await Clipboard.setData(
                             ClipboardData(text: _formatTime(request.createdAt)),
                           );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Скопировано')),
+                          );
                           break;
                         case 'copy_id':
                           await Clipboard.setData(
                             ClipboardData(text: request.id),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Скопировано')),
                           );
                           break;
                         case 'delete':
