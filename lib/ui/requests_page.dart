@@ -29,6 +29,7 @@ class _RequestsPageState extends State<RequestsPage> {
   @override
   void initState() {
     super.initState();
+    filterDay = DateTime.now();
     loadRequests();
   }
 
@@ -266,7 +267,7 @@ class _RequestsPageState extends State<RequestsPage> {
             IconButton(
               onPressed: () async {
                 setState(() {
-                  filterDay = null;
+                  filterDay = DateTime.now();
                   isLoading = true;
                 });
                 await loadRequests();
