@@ -214,7 +214,8 @@ class _RequestsPageState extends State<RequestsPage> {
         })
         .join('\n');
 
-    final text = 'Дата: $headerDate\n$body';
+    final text =
+        'Дата: $headerDate\n-------------------------------------------------------------------\n$body';
 
     // Копируем в буфер
     Clipboard.setData(ClipboardData(text: text));
@@ -325,8 +326,34 @@ class _RequestsPageState extends State<RequestsPage> {
                           );
                           break;
                         case 'delete':
-                          await db.delete(request.id);
-                          await loadRequests();
+                          final result = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text('Удалить заявку?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(
+                                    context,
+                                    false,
+                                  ), // return false
+                                  child: const Text('Нет'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(
+                                    context,
+                                    true,
+                                  ), // return true
+                                  child: const Text('Да'),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (result == true) {
+                            await db.delete(request.id);
+                            await loadRequests();
+                          }
+
                           break;
                       }
                     },
